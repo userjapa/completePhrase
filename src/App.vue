@@ -6,11 +6,11 @@
       </div>
       <div class="game__question__words container wrap justify-content-around">
         <span
-          v-for="a in words"
-          :draggable="!a.selected"
+          v-for="a in question.answers"
+          :draggable="!a.selected && !question.answered"
           :class="{ disabled: a.selected }"
-          @dragstart="dragstart(a, $event.target)"
-          @dragend="dragend(a, $event.target)"
+          @dragstart="dragstart(a)"
+          @dragend="dragend(a)"
         >
             {{ a.word }}
         </span>
@@ -19,18 +19,21 @@
         <div class="game__question__info__title">
           <p>Make the Sentence</p>
         </div>
-        <button class="game__question__info__check" type="button" name="button" :disabled="!filled" @click="check()">
+        <button class="game__question__info__check" type="button" name="button" :disabled="!filled" @click="answerQuestion()">
           CHECK
         </button>
       </div>
       <div class="game__question__sentence container justify-content-center">
         <span
           v-for="(a, ind) in answers"
+          :draggable="a.selected && !question.answered"
           :class="{ empty: !a.selected }"
-          @dragenter="dragenter(a, $event.target)"
-          @dragleave="dragleave(a, $event.target)"
+          @dragenter="dragenter(a)"
+          @dragleave="dragleave(a)"
           @dragover="$event.preventDefault()"
-          @drop="drop(a, $event.target)"
+          @drop="drop(a)"
+          @dragstart="dragstart(a)"
+          @dragend="dragend(a)"
         >
           {{ a.selected ? a.selected.word : `Word ${++ind}` }}
         </span>
@@ -45,7 +48,12 @@
           Your Sentence
         </div>
         <div class="game__answer__result__text container justify-content-start align-items-center">
-          <span v-for="a in answers" :class="{ wrong: (checked && (!a.selected || (a.selected.order == null) || (a.selected.order !== a.correct.order))) }">{{ a.selected ? a.selected.word : '' }}&nbsp</span>
+          <span
+            v-for="a in answers"
+            :class="{ wrong: (question.answered && (!a.selected || (a.selected.order == null) || (a.selected.order !== a.correct.order))) }"
+          >
+            {{ !a.selected ? '' : a.selected.word }}&nbsp
+          </span>
         </div>
       </div>
       <div class="game__answer__result container align-items-center correct">
@@ -53,7 +61,7 @@
           Correct Sentence
         </div>
         <div class="game__answer__result__text container justify-content-start align-items-center">
-          {{ checked ? question.text : '' }}
+          {{ question.answered ? question.text : '' }}
         </div>
       </div>
     </div>
@@ -68,14 +76,13 @@ export default {
   data () {
     return {
       sentence: '',
-      answers: [],
-      words: [],
       toDrop: null,
-      checked: false,
       questions: [],
       question: {
         question: 'Observe a imagem e logo apos ouça os audios e selecione aquele que melhor corresponde à imagem.',
         text: 'He is watching TV',
+        answered: false,
+        shuffled: false,
         answers: [{
           word: 'She',
           selected: false
@@ -137,22 +144,40 @@ export default {
   },
   computed: {
     textWords () {
-      return cloneDeep(this.question.text.replace(/[^a-zA-Z0-9' ]/g, '').split(' '))
+      return this.question.text.replace(/[^a-zA-Z0-9' ]/g, '').split(' ')
     },
     filled () {
       for (const a of this.answers) {
         if (!a.selected) return false
       }
       return true
+    },
+    answers: {
+      cache: false,
+      get () {
+        let aswr_words = this.textWords.map((w, index) => ({ word: w, order: index })),
+            words = this.question.answers.filter(w => w.selected)
+
+        aswr_words = aswr_words.map(w => ({ correct: w, selected: null}))
+
+        for (const w of words) {
+          this.$set(aswr_words[w.position], 'selected', w)
+        }
+
+        return aswr_words
+      }
     }
   },
   methods: {
     setWords () {
-      const aswr_words = this.textWords.map((w, index) => ({ word: w, order: index, selected: false })),
-            words = [...this.question.answers, ...aswr_words]
+      let words = this.question.answers
 
-      this.answers = cloneDeep(aswr_words).map(w => ({ correct: w, selected: null }))
-      this.words = this.shuffle(words)
+      if (!this.question.shuffled) {
+        const aswr_words = this.textWords.map((w, index) => ({ word: w, order: index, selected: false }))
+        words = [ ...words, ...aswr_words ]
+        this.$set(this.question, 'shuffled', true)
+      }
+      this.$set(this.question, 'answers', this.shuffle(words))
     },
     shuffle (arr) {
       let lgth = arr.length;
@@ -169,31 +194,51 @@ export default {
       }
       return arr;
     },
-    dragstart (word, target) {
-      console.log('Drag Start', word, target)
+    dragstart (word) {
       this.toDrop = word
     },
-    dragend (word, target) {
-      console.log('Drag End', word, target)
+    dragend (word) {
       this.toDrop = null
     },
-    dragenter (word, target) {
-      console.log('Drag Enter', word, target)
+    dragenter (word) {
       this.canDrop = true
     },
-    dragleave (word, target) {
-      console.log('Drag Leave', word, target)
+    dragleave (word) {
       this.canDrop = false
     },
-    drop (word, target) {
-      console.log('Drop', word, target)
-      word.selected = this.toDrop
-      this.toDrop.selected = true
-      this.canDrop = false
+    drop (word) {
+      if (this.canDrop && !this.question.answered) {
+        let toDrop = this.toDrop
+
+        if (typeof toDrop.selected === 'boolean') {
+          if (word.selected) {
+            this.$set(word.selected, 'selected', false)
+            this.$delete(word.selected, 'position')
+          }
+          toDrop.selected = true
+          toDrop.position = word.correct.order
+          this.canDrop = false
+        } else {
+          if (word.correct.order !== toDrop.correct.order) {
+            const index = this.question.answers.findIndex(a => a.word == toDrop.selected.word)
+            let selected = cloneDeep(this.question.answers[index])
+            this.$set(selected, 'position', word.correct.order)
+            this.$set(this.question.answers, index, selected)
+            if (word.selected) {
+              const temp_index = this.question.answers.findIndex(a => a.word == word.selected.word)
+              let temp = cloneDeep(this.question.answers[temp_index])
+              this.$set(temp, 'position', toDrop.correct.order)
+              this.$set(this.question.answers, temp_index, temp)
+            }
+            this.$nextTick()
+          }
+        }
+      }
     },
-    check () {
-      this.checked = true
-      console.log(this.answers)
+    answerQuestion () {
+      if (!this.question.answered) {
+        this.$set(this.question, 'answered', true)
+      }
     }
   },
   mounted () {
@@ -248,14 +293,16 @@ export default {
       padding: 10px 15px;
       margin-bottom: 10px;
       span {
-        cursor: pointer;
         border-radius: 25px;
         padding: 5px 15px;
         background-color: yellow;
         margin: 5px;
+        cursor: not-allowed;
         &.disabled {
-          cursor: not-allowed;
           background-color: #DDD;
+        }
+        &[draggable="true"] {
+          cursor: pointer;
         }
       }
     }
@@ -295,11 +342,15 @@ export default {
         padding: 5px 15px;
         background-color: yellow;
         margin: 5px;
+        cursor: not-allowed;
         &.empty {
           min-width: 68px;
           min-height: 18px;
           background-color: #DDD;
           text-align: center;
+        }
+        &[draggable="true"] {
+          cursor: pointer;
         }
       }
     }
