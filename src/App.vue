@@ -41,7 +41,7 @@
     </div>
     <div class="game__answer item flex-basis-400 container column">
       <div class="game__answer__img">
-        <img src="https://www.worldatlas.com/r/w728-h425-c728x425/upload/4b/18/e8/tv-television-watching.jpg" alt="Question Image">
+        <img :src="question.img" alt="Question Image">
       </div>
       <div class="game__answer__result container align-items-center yours">
         <div class="game__answer__result__title container align-items-center yours">
@@ -79,6 +79,7 @@ export default {
       toDrop: null,
       questions: [],
       question: {
+        img: 'https://www.worldatlas.com/r/w728-h425-c728x425/upload/4b/18/e8/tv-television-watching.jpg',
         question: 'Observe a imagem e logo apos ouça os audios e selecione aquele que melhor corresponde à imagem.',
         text: 'He is watching TV',
         answered: false,
