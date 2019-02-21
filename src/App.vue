@@ -19,8 +19,8 @@
         <div class="game__question__info__title">
           <p>Make the Sentence</p>
         </div>
-        <div class="game__question__info__drop" type="button" name="button"@dragover="$event.preventDefault()" @drop="removeWord()">
-          Drop here to remove the word
+        <div class="game__question__info__drop container justify-content-center align-items-center" type="button" name="button"@dragover="$event.preventDefault()" @drop="removeWord()">
+          Drop to remove word
         </div>
         <button class="game__question__info__check" type="button" name="button" :disabled="!filled" @click="answerQuestion()">
           CHECK
@@ -327,6 +327,13 @@ export default {
           margin: 0;
         }
       }
+      &__drop {
+        padding: 6px 21px;
+        order: 2px solid #DDD;
+        border: 2px solid #777;
+        border-radius: 5px;
+        background-color: #DDD;
+      }
       &__check {
         cursor: pointer;
         outline: none;
@@ -341,12 +348,6 @@ export default {
           color: #AAA;
         }
       }
-    }
-    &__drop {
-      order: 2px solid #DDD;
-      border-radius: 15px;
-      padding: 10px 15px;
-      background-color: red;
     }
     &__sentence {
       border: 2px solid #DDD;
