@@ -19,6 +19,9 @@
         <div class="game__question__info__title">
           <p>Make the Sentence</p>
         </div>
+        <div class="game__question__info__drop" type="button" name="button"@dragover="$event.preventDefault()" @drop="removeWord()">
+          Drop here to remove the word
+        </div>
         <button class="game__question__info__check" type="button" name="button" :disabled="!filled" @click="answerQuestion()">
           CHECK
         </button>
@@ -81,7 +84,7 @@ export default {
       question: {
         img: 'https://www.worldatlas.com/r/w728-h425-c728x425/upload/4b/18/e8/tv-television-watching.jpg',
         question: 'Observe a imagem e logo apos ouça os audios e selecione aquele que melhor corresponde à imagem.',
-        text: 'He is watching TV',
+        text: "he will die",
         answered: false,
         shuffled: false,
         answers: [{
@@ -240,6 +243,11 @@ export default {
       if (!this.question.answered) {
         this.$set(this.question, 'answered', true)
       }
+    },
+    removeWord () {
+      if (this.toDrop.selected) {
+        this.$set(this.toDrop.selected, 'selected', false)
+      }
     }
   },
   mounted () {
@@ -333,6 +341,12 @@ export default {
           color: #AAA;
         }
       }
+    }
+    &__drop {
+      order: 2px solid #DDD;
+      border-radius: 15px;
+      padding: 10px 15px;
+      background-color: red;
     }
     &__sentence {
       border: 2px solid #DDD;
